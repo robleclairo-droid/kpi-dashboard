@@ -371,6 +371,7 @@
                     dashboardData.kpis.push({
                         name: row[0].trim(),
                         thisWeek: parseFloat(row[2]) || 0,
+                        hasData: !isNaN(parseFloat(row[2])),
                         target: parseFloat(row[3]) || 0,
                         status: row[4] ? row[4].trim() : '—',
                         avg4week: parseFloat(row[5]) || 0,
@@ -445,6 +446,24 @@
                 // Determine unit and inverse status
                 const isTimeMetric = kpi.name.includes('Turnaround');
                 const unit = isTimeMetric ? ' days' : '%';
+
+                if (!kpi.hasData) {
+                    return `
+                        <div class="kpi-card">
+                            <div class="kpi-label">${kpi.name}</div>
+                            <div class="kpi-value">—</div>
+                            <div class="kpi-target">Target: ${kpi.target}${unit}</div>
+                            <div class="kpi-bar">
+                                <div class="kpi-bar-fill" style="width: 0%"></div>
+                            </div>
+                            <div class="kpi-stats">
+                                <span>This Week: —</span>
+                                <span>4-Wk Avg: —</span>
+                            </div>
+                        </div>
+                    `;
+                }
+
                 const status = getStatus(kpi.thisWeek, kpi.target, isTimeMetric);
 
                 // Calculate percentage for bar fill
