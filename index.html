@@ -63,6 +63,30 @@
             display: flex;
             gap: 10px;
             align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .week-picker {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .week-picker label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--primary);
+        }
+
+        .week-picker select {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            color: var(--text);
+            cursor: pointer;
+            min-width: 150px;
         }
 
         .status-badge {
@@ -108,6 +132,14 @@
 
         .refresh-btn:hover {
             background: #2563eb;
+        }
+
+        .reporting-line {
+            margin-bottom: 20px;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
         }
 
         .scorecard {
@@ -295,6 +327,10 @@
                 <p id="lastUpdate">Loading data...</p>
             </div>
             <div class="header-right">
+                <div class="week-picker">
+                    <label for="weekSelect">Week Ending:</label>
+                    <select id="weekSelect" onchange="onWeekChange()"></select>
+                </div>
                 <div id="statusBadge" class="status-badge">
                     <span class="dot"></span>
                     <span>Live</span>
@@ -304,6 +340,8 @@
         </div>
 
         <div id="errorContainer"></div>
+
+        <p id="reportingLine" class="reporting-line"></p>
 
         <div id="scorecard" class="scorecard">
             <div class="data-placeholder">
@@ -319,36 +357,56 @@
     </div>
 
     <script>
-        // ⚠️ UPDATE THIS URL WITH YOUR GOOGLE SHEETS CSV EXPORT URL
-        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTTodaoBqISV0s84L0I2WGyBKQxIETQ65EasIemEO8gvlyi1HbRzIROvnSLspiUY1iz-VoTxPwuA4cV/pub?gid=1530873949&single=true&output=csv';
+        // Both tabs published from the same Google Sheet (File > Share > Publish to web > CSV)
+        const SETUP_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTTodaoBqISV0s84L0I2WGyBKQxIETQ65EasIemEO8gvlyi1HbRzIROvnSLspiUY1iz-VoTxPwuA4cV/pub?gid=1341792371&single=true&output=csv';
+        const ENTRY_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTTodaoBqISV0s84L0I2WGyBKQxIETQ65EasIemEO8gvlyi1HbRzIROvnSLspiUY1iz-VoTxPwuA4cV/pub?gid=648611558&single=true&output=csv';
 
-        let dashboardData = {
-            kpis: [],
-            properties: [],
-            timestamp: null
-        };
+        const KPI_DEFS = [
+            { key: 'occupancy', name: 'Occupancy Rate', targetName: 'Occupancy Rate', inverse: false, unit: '%' },
+            { key: 'collection', name: 'Rent Collection Rate', targetName: 'Rent Collection Rate', inverse: false, unit: '%' },
+            { key: 'woOnTime', name: 'Work Orders Closed On Time', targetName: 'Work Orders Closed On Time', inverse: false, unit: '%' },
+            { key: 'turnaround', name: 'Avg Unit Turnaround (days)', targetName: 'Avg Unit Turnaround (days)', inverse: true, unit: ' days' },
+            { key: 'rgiOnTime', name: 'RGI Reviews Completed On Time', targetName: 'RGI Reviews Completed On Time', inverse: false, unit: '%' }
+        ];
 
-        // Initialize dashboard
+        let properties = [];       // [{id, name, totalUnits}]
+        let targets = {};          // { 'Occupancy Rate': 97, ... }
+        let entriesByWeek = new Map(); // week -> [rawRow]
+        let weeksSorted = [];      // descending, most recent first
+        let selectedWeek = null;
+        let lastLoadTime = null;
+
         document.addEventListener('DOMContentLoaded', function() {
             loadData();
-            // Auto-refresh every 60 seconds
             setInterval(loadData, 60000);
         });
 
         async function loadData() {
             try {
                 updateStatus('updating');
-                const response = await fetch(CSV_URL);
+                const [setupText, entryText] = await Promise.all([
+                    fetchCsv(SETUP_CSV_URL),
+                    fetchCsv(ENTRY_CSV_URL)
+                ]);
 
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch data: ${response.status}`);
+                parseSetup(setupText);
+                parseEntries(entryText);
+
+                const previousSelection = selectedWeek;
+                populateWeekSelect();
+
+                // Preserve the user's selection across refreshes if it still exists, else default to latest
+                if (previousSelection && weeksSorted.includes(previousSelection)) {
+                    selectedWeek = previousSelection;
+                    document.getElementById('weekSelect').value = selectedWeek;
+                } else {
+                    selectedWeek = weeksSorted[0] || null;
                 }
 
-                const csvText = await response.text();
-                parseCSVData(csvText);
                 renderDashboard();
                 updateStatus('live');
                 clearError();
+                lastLoadTime = new Date();
             } catch (error) {
                 console.error('Error loading data:', error);
                 showError('Failed to load data from Google Sheets: ' + error.message);
@@ -356,48 +414,12 @@
             }
         }
 
-        function parseCSVData(csv) {
-            const lines = csv.trim().split('\n');
-            dashboardData.timestamp = new Date();
-
-            // Parse Portfolio Scorecard (rows 6-12)
-            const kpiStartRow = 7;
-            const kpiEndRow = 12;
-
-            dashboardData.kpis = [];
-            for (let i = kpiStartRow; i < Math.min(kpiEndRow + 1, lines.length); i++) {
-                const row = parseCSVLine(lines[i]);
-                if (row.length > 1 && row[0].trim()) {
-                    dashboardData.kpis.push({
-                        name: row[0].trim(),
-                        thisWeek: parseFloat(row[2]) || 0,
-                        hasData: !isNaN(parseFloat(row[2])),
-                        target: parseFloat(row[3]) || 0,
-                        status: row[4] ? row[4].trim() : '—',
-                        avg4week: parseFloat(row[5]) || 0,
-                        belowTarget: parseInt(row[6]) || 0
-                    });
-                }
+        async function fetchCsv(url) {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch data: ${response.status}`);
             }
-
-            // Parse Property Details (rows 15+)
-            dashboardData.properties = [];
-            const propertyStartRow = 15;
-            for (let i = propertyStartRow; i < lines.length; i++) {
-                const row = parseCSVLine(lines[i]);
-                if (row.length > 2 && row[0].trim() && row[0].includes('Property')) {
-                    dashboardData.properties.push({
-                        name: row[0].trim(),
-                        occupancy: parseFloat(row[1]) || 0,
-                        collection: parseFloat(row[2]) || 0,
-                        woOnTime: parseFloat(row[3]) || 0,
-                        turnaround: parseFloat(row[4]) || 0,
-                        rgiOnTime: parseFloat(row[5]) || 0,
-                        kpisMet: parseInt(row[6]) || 0,
-                        entries: parseInt(row[7]) || 0
-                    });
-                }
-            }
+            return response.text();
         }
 
         function parseCSVLine(line) {
@@ -407,7 +429,6 @@
 
             for (let i = 0; i < line.length; i++) {
                 const char = line[i];
-
                 if (char === '"') {
                     insideQuotes = !insideQuotes;
                 } else if (char === ',' && !insideQuotes) {
@@ -421,41 +442,250 @@
             return result;
         }
 
-        function getStatus(value, target, inverse = false) {
-            if (!value || !target) return 'warning';
+        function toNumber(str) {
+            if (str === undefined || str === null) return NaN;
+            const cleaned = String(str).replace(/[$,%\s]/g, '');
+            if (cleaned === '') return NaN;
+            return parseFloat(cleaned);
+        }
+
+        // Setup tab: Property List in columns A-D, KPI Targets in columns F-H
+        function parseSetup(csv) {
+            const lines = csv.trim().split('\n');
+            const newProperties = [];
+            const newTargets = {};
+
+            for (let i = 0; i < lines.length; i++) {
+                const row = parseCSVLine(lines[i]);
+                // Property List rows: Property ID (P##), Property Name, Total Units, Property Manager
+                if (row[0] && /^P\d+/.test(row[0].trim())) {
+                    const totalUnits = toNumber(row[2]);
+                    if (row[1] && row[1].trim() && !isNaN(totalUnits)) {
+                        newProperties.push({
+                            id: row[0].trim(),
+                            name: row[1].trim(),
+                            totalUnits: totalUnits
+                        });
+                    }
+                }
+                // KPI Targets rows: KPI name in col F (idx 5), Target in col G (idx 6)
+                if (row[5] && row[5].trim() && KPI_DEFS.some(k => k.targetName === row[5].trim())) {
+                    const targetVal = toNumber(row[6]);
+                    if (!isNaN(targetVal)) {
+                        newTargets[row[5].trim()] = targetVal;
+                    }
+                }
+            }
+
+            properties = newProperties;
+            targets = newTargets;
+        }
+
+        // Weekly Entry tab: Week Ending, Property, Units Occupied, Rent Charged, Rent Collected,
+        // Work Orders Due, WOs Closed On Time, Avg Turnaround (days), RGI Reviews Due, RGI Reviews Done
+        function parseEntries(csv) {
+            const lines = csv.trim().split('\n');
+            const newMap = new Map();
+
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                const row = parseCSVLine(lines[i]);
+                const week = row[0] ? row[0].trim() : '';
+                const property = row[1] ? row[1].trim() : '';
+                if (!week || !property) continue;
+
+                const entry = {
+                    week,
+                    property,
+                    unitsOccupied: toNumber(row[2]),
+                    rentCharged: toNumber(row[3]),
+                    rentCollected: toNumber(row[4]),
+                    woDue: toNumber(row[5]),
+                    woClosedOnTime: toNumber(row[6]),
+                    avgTurnaround: toNumber(row[7]),
+                    rgiDue: toNumber(row[8]),
+                    rgiDone: toNumber(row[9])
+                };
+
+                if (!newMap.has(week)) newMap.set(week, []);
+                newMap.get(week).push(entry);
+            }
+
+            entriesByWeek = newMap;
+            weeksSorted = Array.from(newMap.keys()).sort().reverse();
+        }
+
+        function populateWeekSelect() {
+            const select = document.getElementById('weekSelect');
+            select.innerHTML = weeksSorted.map(w => `<option value="${w}">${w}</option>`).join('');
+        }
+
+        function onWeekChange() {
+            selectedWeek = document.getElementById('weekSelect').value;
+            renderDashboard();
+        }
+
+        function refreshData() {
+            loadData();
+        }
+
+        // Compute per-property metrics for a single raw entry row
+        function computePropertyMetrics(entry) {
+            const prop = properties.find(p => p.name === entry.property);
+            const totalUnits = prop ? prop.totalUnits : NaN;
+
+            const occupancy = (!isNaN(totalUnits) && totalUnits > 0 && !isNaN(entry.unitsOccupied))
+                ? (entry.unitsOccupied / totalUnits) * 100 : NaN;
+            const collection = (!isNaN(entry.rentCharged) && entry.rentCharged > 0 && !isNaN(entry.rentCollected))
+                ? (entry.rentCollected / entry.rentCharged) * 100 : NaN;
+            const woOnTime = (!isNaN(entry.woDue) && entry.woDue > 0 && !isNaN(entry.woClosedOnTime))
+                ? (entry.woClosedOnTime / entry.woDue) * 100 : NaN;
+            const turnaround = !isNaN(entry.avgTurnaround) ? entry.avgTurnaround : NaN;
+            const rgiOnTime = (!isNaN(entry.rgiDue) && entry.rgiDue > 0 && !isNaN(entry.rgiDone))
+                ? (entry.rgiDone / entry.rgiDue) * 100 : NaN;
+
+            const metrics = { occupancy, collection, woOnTime, turnaround, rgiOnTime };
+
+            let kpisMet = 0;
+            KPI_DEFS.forEach(def => {
+                const val = metrics[def.key];
+                const target = targets[def.targetName];
+                if (isNaN(val) || target === undefined) return;
+                const meets = def.inverse ? val <= target : val >= target;
+                if (meets) kpisMet++;
+            });
+
+            return { ...metrics, kpisMet };
+        }
+
+        // Aggregate portfolio-wide KPI values for a given week (weighted where applicable)
+        function computeWeekAggregate(week) {
+            const rows = entriesByWeek.get(week) || [];
+            let occNum = 0, occDen = 0;
+            let colNum = 0, colDen = 0;
+            let woNum = 0, woDen = 0;
+            let rgiNum = 0, rgiDen = 0;
+            let turnSum = 0, turnCount = 0;
+
+            rows.forEach(entry => {
+                const prop = properties.find(p => p.name === entry.property);
+                const totalUnits = prop ? prop.totalUnits : NaN;
+
+                if (!isNaN(totalUnits) && !isNaN(entry.unitsOccupied)) {
+                    occNum += entry.unitsOccupied;
+                    occDen += totalUnits;
+                }
+                if (!isNaN(entry.rentCharged) && !isNaN(entry.rentCollected)) {
+                    colNum += entry.rentCollected;
+                    colDen += entry.rentCharged;
+                }
+                if (!isNaN(entry.woDue) && !isNaN(entry.woClosedOnTime)) {
+                    woNum += entry.woClosedOnTime;
+                    woDen += entry.woDue;
+                }
+                if (!isNaN(entry.rgiDue) && !isNaN(entry.rgiDone)) {
+                    rgiNum += entry.rgiDone;
+                    rgiDen += entry.rgiDue;
+                }
+                if (!isNaN(entry.avgTurnaround)) {
+                    turnSum += entry.avgTurnaround;
+                    turnCount++;
+                }
+            });
+
+            return {
+                occupancy: occDen > 0 ? (occNum / occDen) * 100 : NaN,
+                collection: colDen > 0 ? (colNum / colDen) * 100 : NaN,
+                woOnTime: woDen > 0 ? (woNum / woDen) * 100 : NaN,
+                turnaround: turnCount > 0 ? turnSum / turnCount : NaN,
+                rgiOnTime: rgiDen > 0 ? (rgiNum / rgiDen) * 100 : NaN,
+                reportCount: rows.length
+            };
+        }
+
+        // Trailing 4-week average (the selected week plus up to 3 prior weeks that have data)
+        function computeTrailingAverage(week) {
+            const idx = weeksSorted.indexOf(week);
+            if (idx === -1) return {};
+            const windowWeeks = weeksSorted.slice(idx, idx + 4);
+            const sums = { occupancy: [], collection: [], woOnTime: [], turnaround: [], rgiOnTime: [] };
+
+            windowWeeks.forEach(w => {
+                const agg = computeWeekAggregate(w);
+                Object.keys(sums).forEach(key => {
+                    if (!isNaN(agg[key])) sums[key].push(agg[key]);
+                });
+            });
+
+            const avg = {};
+            Object.keys(sums).forEach(key => {
+                avg[key] = sums[key].length > 0 ? sums[key].reduce((a, b) => a + b, 0) / sums[key].length : NaN;
+            });
+            return avg;
+        }
+
+        function countBelowTarget(week, kpiKey, def) {
+            const rows = entriesByWeek.get(week) || [];
+            let count = 0;
+            rows.forEach(entry => {
+                const metrics = computePropertyMetrics(entry);
+                const val = metrics[kpiKey];
+                const target = targets[def.targetName];
+                if (isNaN(val) || target === undefined) return;
+                const meets = def.inverse ? val <= target : val >= target;
+                if (!meets) count++;
+            });
+            return count;
+        }
+
+        function getStatus(value, target, inverse) {
+            if (isNaN(value) || target === undefined) return 'warning';
             const percentage = inverse ? (target / value) * 100 : (value / target) * 100;
-            if (percentage >= 95) return 'good';
-            if (percentage >= 85) return 'warning';
+            if (percentage >= 100) return 'good';
+            if (percentage >= 90) return 'warning';
             return 'danger';
         }
 
         function renderDashboard() {
+            renderReportingLine();
             renderKPIs();
             renderPropertiesTable();
+        }
+
+        function renderReportingLine() {
+            const line = document.getElementById('reportingLine');
+            if (!selectedWeek) {
+                line.textContent = '';
+                return;
+            }
+            const rows = entriesByWeek.get(selectedWeek) || [];
+            const reportingCount = new Set(rows.map(r => r.property)).size;
+            line.textContent = `Week Ending ${selectedWeek} · ${reportingCount} of ${properties.length} properties reporting`;
         }
 
         function renderKPIs() {
             const scorecard = document.getElementById('scorecard');
 
-            if (dashboardData.kpis.length === 0) {
-                scorecard.innerHTML = '<div class="data-placeholder"><p>No KPI data available yet. Please enter data in your Google Sheet.</p></div>';
+            if (!selectedWeek || weeksSorted.length === 0) {
+                scorecard.innerHTML = '<div class="data-placeholder"><p>No weekly data available yet. Please enter data in your Google Sheet.</p></div>';
                 return;
             }
 
-            scorecard.innerHTML = dashboardData.kpis.map(kpi => {
-                // Determine unit and inverse status
-                const isTimeMetric = kpi.name.includes('Turnaround');
-                const unit = isTimeMetric ? ' days' : '%';
+            const agg = computeWeekAggregate(selectedWeek);
+            const trailing = computeTrailingAverage(selectedWeek);
 
-                if (!kpi.hasData) {
+            scorecard.innerHTML = KPI_DEFS.map(def => {
+                const value = agg[def.key];
+                const target = targets[def.targetName];
+                const hasData = !isNaN(value);
+
+                if (!hasData) {
                     return `
                         <div class="kpi-card">
-                            <div class="kpi-label">${kpi.name}</div>
+                            <div class="kpi-label">${def.name}</div>
                             <div class="kpi-value">—</div>
-                            <div class="kpi-target">Target: ${kpi.target}${unit}</div>
-                            <div class="kpi-bar">
-                                <div class="kpi-bar-fill" style="width: 0%"></div>
-                            </div>
+                            <div class="kpi-target">Target: ${target !== undefined ? target + def.unit : '—'}</div>
+                            <div class="kpi-bar"><div class="kpi-bar-fill" style="width: 0%"></div></div>
                             <div class="kpi-stats">
                                 <span>This Week: —</span>
                                 <span>4-Wk Avg: —</span>
@@ -464,24 +694,25 @@
                     `;
                 }
 
-                const status = getStatus(kpi.thisWeek, kpi.target, isTimeMetric);
-
-                // Calculate percentage for bar fill
-                const percentage = isTimeMetric ?
-                    Math.min(100, (kpi.target / kpi.thisWeek) * 100) :
-                    Math.min(100, (kpi.thisWeek / kpi.target) * 100);
+                const status = getStatus(value, target, def.inverse);
+                const percentage = def.inverse
+                    ? Math.min(100, (target / value) * 100)
+                    : Math.min(100, (value / target) * 100);
+                const trailingVal = trailing[def.key];
+                const belowTarget = countBelowTarget(selectedWeek, def.key, def);
 
                 return `
                     <div class="kpi-card status-${status}">
-                        <div class="kpi-label">${kpi.name}</div>
-                        <div class="kpi-value">${kpi.thisWeek.toFixed(1)}${unit}</div>
-                        <div class="kpi-target">Target: ${kpi.target}${unit}</div>
-                        <div class="kpi-bar">
-                            <div class="kpi-bar-fill" style="width: ${percentage}%"></div>
-                        </div>
+                        <div class="kpi-label">${def.name}</div>
+                        <div class="kpi-value">${value.toFixed(1)}${def.unit}</div>
+                        <div class="kpi-target">Target: ${target !== undefined ? target + def.unit : '—'}</div>
+                        <div class="kpi-bar"><div class="kpi-bar-fill" style="width: ${percentage}%"></div></div>
                         <div class="kpi-stats">
-                            <span>This Week: ${kpi.thisWeek}${unit}</span>
-                            <span>4-Wk Avg: ${kpi.avg4week}${unit}</span>
+                            <span>This Week: ${value.toFixed(1)}${def.unit}</span>
+                            <span>4-Wk Avg: ${!isNaN(trailingVal) ? trailingVal.toFixed(1) + def.unit : '—'}</span>
+                        </div>
+                        <div class="kpi-stats" style="margin-top:6px;">
+                            <span>${belowTarget} ${belowTarget === 1 ? 'property' : 'properties'} below target</span>
                         </div>
                     </div>
                 `;
@@ -491,10 +722,13 @@
         function renderPropertiesTable() {
             const container = document.getElementById('propertiesTable');
 
-            if (dashboardData.properties.length === 0) {
+            if (properties.length === 0) {
                 container.innerHTML = '<p class="data-placeholder">No property data available yet.</p>';
                 return;
             }
+
+            const rows = selectedWeek ? (entriesByWeek.get(selectedWeek) || []) : [];
+            const entryByProperty = new Map(rows.map(r => [r.property, r]));
 
             const html = `
                 <table class="properties-table">
@@ -511,18 +745,30 @@
                         </tr>
                     </thead>
                     <tbody>
-                        ${dashboardData.properties.map(prop => {
-                            const kpisMetStatus = prop.kpisMet >= 4 ? 'good' : prop.kpisMet >= 3 ? 'warning' : 'danger';
-                            const statusText = prop.kpisMet >= 4 ? 'On Track' : prop.kpisMet >= 3 ? 'At Risk' : 'Below Target';
+                        ${properties.map(prop => {
+                            const entry = entryByProperty.get(prop.name);
+                            if (!entry) {
+                                return `
+                                    <tr>
+                                        <td><span class="property-name">${prop.name}</span></td>
+                                        <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+                                        <td><strong>0/5</strong></td>
+                                        <td><span class="status-badge danger">No Entry</span></td>
+                                    </tr>
+                                `;
+                            }
+                            const m = computePropertyMetrics(entry);
+                            const kpisMetStatus = m.kpisMet >= 4 ? 'good' : m.kpisMet >= 3 ? 'warning' : 'danger';
+                            const statusText = m.kpisMet >= 4 ? 'On Track' : m.kpisMet >= 3 ? 'At Risk' : 'Below Target';
                             return `
                                 <tr>
                                     <td><span class="property-name">${prop.name}</span></td>
-                                    <td>${prop.occupancy > 0 ? prop.occupancy.toFixed(1) + '%' : '—'}</td>
-                                    <td>${prop.collection > 0 ? prop.collection.toFixed(1) + '%' : '—'}</td>
-                                    <td>${prop.woOnTime > 0 ? prop.woOnTime.toFixed(1) + '%' : '—'}</td>
-                                    <td>${prop.turnaround > 0 ? prop.turnaround : '—'}</td>
-                                    <td>${prop.rgiOnTime > 0 ? prop.rgiOnTime.toFixed(1) + '%' : '—'}</td>
-                                    <td><strong>${prop.kpisMet}/5</strong></td>
+                                    <td>${!isNaN(m.occupancy) ? m.occupancy.toFixed(1) + '%' : '—'}</td>
+                                    <td>${!isNaN(m.collection) ? m.collection.toFixed(1) + '%' : '—'}</td>
+                                    <td>${!isNaN(m.woOnTime) ? m.woOnTime.toFixed(1) + '%' : '—'}</td>
+                                    <td>${!isNaN(m.turnaround) ? m.turnaround : '—'}</td>
+                                    <td>${!isNaN(m.rgiOnTime) ? m.rgiOnTime.toFixed(1) + '%' : '—'}</td>
+                                    <td><strong>${m.kpisMet}/5</strong></td>
                                     <td><span class="status-badge ${kpisMetStatus}">${statusText}</span></td>
                                 </tr>
                             `;
@@ -549,30 +795,22 @@
         }
 
         function showError(message) {
-            const container = document.getElementById('errorContainer');
-            container.innerHTML = `<div class="error">${message}</div>`;
+            document.getElementById('errorContainer').innerHTML = `<div class="error">${message}</div>`;
         }
 
         function clearError() {
             document.getElementById('errorContainer').innerHTML = '';
         }
 
-        function refreshData() {
-            loadData();
-        }
-
-        // Update last update time
+        // Update "last updated" ticker
         setInterval(() => {
-            if (dashboardData.timestamp) {
-                const now = new Date();
-                const diff = Math.floor((now - dashboardData.timestamp) / 1000);
-                let timeText = '';
-
+            if (lastLoadTime) {
+                const diff = Math.floor((new Date() - lastLoadTime) / 1000);
+                let timeText;
                 if (diff < 60) timeText = 'just now';
                 else if (diff < 3600) timeText = Math.floor(diff / 60) + 'm ago';
                 else if (diff < 86400) timeText = Math.floor(diff / 3600) + 'h ago';
                 else timeText = Math.floor(diff / 86400) + 'd ago';
-
                 document.getElementById('lastUpdate').textContent = 'Last updated: ' + timeText;
             }
         }, 1000);
