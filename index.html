@@ -5,11 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>APEX Property KPI Dashboard - Live</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
             --primary: #1f2937;
@@ -30,16 +26,13 @@
             min-height: 100vh;
         }
 
-        .container {
-            max-width: 1600px;
-            margin: 0 auto;
-        }
+        .container { max-width: 1600px; margin: 0 auto; }
 
         .header {
             background: white;
             padding: 30px;
             border-radius: 12px;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             display: flex;
             justify-content: space-between;
@@ -48,274 +41,124 @@
             gap: 20px;
         }
 
-        .header-left h1 {
-            font-size: 28px;
-            margin-bottom: 8px;
-            color: var(--primary);
-        }
+        .header-left h1 { font-size: 28px; margin-bottom: 8px; color: var(--primary); }
+        .header-left p { color: #6b7280; font-size: 14px; }
 
-        .header-left p {
-            color: #6b7280;
-            font-size: 14px;
-        }
+        .header-right { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
-        .header-right {
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 12px; background: #d1fae5; color: #065f46;
+            border-radius: 6px; font-size: 13px; font-weight: 500;
+        }
+        .status-badge.updating { background: #fef3c7; color: #92400e; }
+        .dot { width: 8px; height: 8px; background: currentColor; border-radius: 50%; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        .refresh-btn, .back-btn {
+            background: var(--secondary); color: white; border: none;
+            padding: 8px 16px; border-radius: 6px; cursor: pointer;
+            font-size: 14px; transition: background 0.3s;
+        }
+        .refresh-btn:hover, .back-btn:hover { background: #2563eb; }
+        .back-btn { background: var(--primary); }
+        .back-btn:hover { background: #374151; }
+
+        .controls-bar {
+            background: white;
+            padding: 18px 25px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             display: flex;
-            gap: 10px;
             align-items: center;
+            gap: 20px;
             flex-wrap: wrap;
         }
 
-        .week-picker {
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        .control-group { display: flex; align-items: center; gap: 8px; }
+        .control-group label { font-size: 13px; font-weight: 500; color: var(--primary); white-space: nowrap; }
+        .control-group select, .control-group input {
+            padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px;
+            font-size: 14px; background: white; color: var(--text);
         }
+        .control-group select { cursor: pointer; min-width: 130px; }
+        .control-group input[type="search"] { min-width: 220px; }
 
-        .week-picker label {
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--primary);
-        }
-
-        .week-picker select {
-            padding: 8px 12px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            font-size: 14px;
-            background: white;
-            color: var(--text);
-            cursor: pointer;
-            min-width: 150px;
-        }
-
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 12px;
-            background: #d1fae5;
-            color: #065f46;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: 500;
-        }
-
-        .status-badge.updating {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .dot {
-            width: 8px;
-            height: 8px;
-            background: currentColor;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .refresh-btn {
-            background: var(--secondary);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background 0.3s;
-        }
-
-        .refresh-btn:hover {
-            background: #2563eb;
-        }
-
-        .reporting-line {
-            margin-bottom: 20px;
-            color: white;
-            font-size: 14px;
-            font-weight: 500;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-        }
+        .reporting-line { color: white; font-size: 14px; font-weight: 500; text-shadow: 0 1px 2px rgba(0,0,0,0.2); margin-bottom: 16px; }
 
         .scorecard {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px; margin-bottom: 30px;
         }
 
         .kpi-card {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            border-left: 4px solid var(--secondary);
+            background: white; padding: 25px; border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-left: 4px solid var(--secondary);
             transition: transform 0.3s, box-shadow 0.3s;
         }
+        .kpi-card:hover { transform: translateY(-5px); box-shadow: 0 15px 40px rgba(0,0,0,0.15); }
+        .kpi-card.status-good { border-left-color: var(--success); }
+        .kpi-card.status-warning { border-left-color: var(--warning); }
+        .kpi-card.status-danger { border-left-color: var(--danger); }
+        .kpi-card.clickable { cursor: pointer; }
 
-        .kpi-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        .kpi-label { font-size: 13px; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+        .kpi-value { font-size: 36px; font-weight: 700; color: var(--primary); margin-bottom: 12px; }
+        .kpi-target { font-size: 12px; color: #9ca3af; margin-bottom: 15px; }
+        .kpi-bar { height: 6px; background: var(--light); border-radius: 3px; overflow: hidden; margin-bottom: 10px; }
+        .kpi-bar-fill { height: 100%; background: var(--success); transition: width 0.5s ease; }
+        .kpi-stats { display: flex; justify-content: space-between; font-size: 12px; color: #6b7280; }
+
+        .properties-section, .chart-section, .history-section {
+            background: white; padding: 30px; border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow-x: auto; margin-bottom: 20px;
         }
+        .properties-section h2, .chart-section h2, .history-section h2 { font-size: 20px; margin-bottom: 20px; color: var(--primary); }
 
-        .kpi-card.status-good {
-            border-left-color: var(--success);
-        }
+        .properties-table, .history-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .properties-table thead, .history-table thead { background: var(--light); border-bottom: 2px solid var(--border); }
+        .properties-table th, .history-table th { padding: 12px; text-align: left; font-weight: 600; color: var(--primary); white-space: nowrap; }
+        .properties-table td, .history-table td { padding: 12px; border-bottom: 1px solid var(--border); }
+        .properties-table tbody tr:hover { background: var(--light); cursor: pointer; }
 
-        .kpi-card.status-warning {
-            border-left-color: var(--warning);
-        }
+        .property-name { font-weight: 500; color: var(--secondary); }
 
-        .kpi-card.status-danger {
-            border-left-color: var(--danger);
-        }
-
-        .kpi-label {
-            font-size: 13px;
-            color: #6b7280;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 12px;
-        }
-
-        .kpi-value {
-            font-size: 36px;
-            font-weight: 700;
-            color: var(--primary);
-            margin-bottom: 12px;
-        }
-
-        .kpi-target {
-            font-size: 12px;
-            color: #9ca3af;
-            margin-bottom: 15px;
-        }
-
-        .kpi-bar {
-            height: 6px;
-            background: var(--light);
-            border-radius: 3px;
-            overflow: hidden;
-            margin-bottom: 10px;
-        }
-
-        .kpi-bar-fill {
-            height: 100%;
-            background: var(--success);
-            transition: width 0.5s ease;
-        }
-
-        .kpi-stats {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            color: #6b7280;
-        }
-
-        .properties-section {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            overflow-x: auto;
-        }
-
-        .properties-section h2 {
-            font-size: 20px;
-            margin-bottom: 20px;
-            color: var(--primary);
-        }
-
-        .properties-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-
-        .properties-table thead {
-            background: var(--light);
-            border-bottom: 2px solid var(--border);
-        }
-
-        .properties-table th {
-            padding: 12px;
-            text-align: left;
-            font-weight: 600;
-            color: var(--primary);
-            white-space: nowrap;
-        }
-
-        .properties-table td {
-            padding: 12px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .properties-table tbody tr:hover {
-            background: var(--light);
-        }
-
-        .property-name {
-            font-weight: 500;
-            color: var(--secondary);
-        }
-
-        .data-placeholder {
-            text-align: center;
-            padding: 40px;
-            color: #9ca3af;
-        }
-
+        .data-placeholder { text-align: center; padding: 40px; color: #9ca3af; }
         .spinner {
-            border: 3px solid var(--light);
-            border-top: 3px solid var(--secondary);
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto 10px;
+            border: 3px solid var(--light); border-top: 3px solid var(--secondary);
+            border-radius: 50%; width: 30px; height: 30px; animation: spin 0.8s linear infinite; margin: 0 auto 10px;
         }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        .error { background: #fee2e2; color: #991b1b; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid var(--danger); }
 
-        .error {
-            background: #fee2e2;
-            color: #991b1b;
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            border-left: 4px solid var(--danger);
+        .kpi-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .kpi-tab {
+            padding: 8px 14px; border: 1px solid var(--border); border-radius: 20px;
+            background: white; color: var(--primary); font-size: 13px; cursor: pointer; transition: all 0.2s;
         }
+        .kpi-tab.active { background: var(--secondary); color: white; border-color: var(--secondary); }
+
+        .chart-svg { width: 100%; height: auto; }
+        .chart-line { fill: none; stroke: var(--secondary); stroke-width: 2.5; }
+        .chart-point { fill: var(--secondary); }
+        .chart-target-line { stroke: var(--danger); stroke-width: 1.5; stroke-dasharray: 6,4; }
+        .chart-axis { stroke: var(--border); stroke-width: 1; }
+        .chart-label { font-size: 11px; fill: #6b7280; font-family: inherit; }
+
+        .status-pill {
+            display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+        }
+        .status-pill.good { background: #d1fae5; color: #065f46; }
+        .status-pill.warning { background: #fed7aa; color: #92400e; }
+        .status-pill.danger { background: #fee2e2; color: #991b1b; }
 
         @media (max-width: 768px) {
-            .scorecard {
-                grid-template-columns: 1fr;
-            }
-
-            .header {
-                flex-direction: column;
-            }
-
-            .kpi-value {
-                font-size: 28px;
-            }
-
-            .properties-table {
-                font-size: 11px;
-            }
-
-            .properties-table th,
-            .properties-table td {
-                padding: 8px;
-            }
+            .scorecard { grid-template-columns: 1fr; }
+            .header { flex-direction: column; }
+            .kpi-value { font-size: 28px; }
+            .properties-table th, .properties-table td { padding: 8px; }
         }
     </style>
 </head>
@@ -323,38 +166,24 @@
     <div class="container">
         <div class="header">
             <div class="header-left">
-                <h1>🏢 APEX Property Portfolio Dashboard</h1>
+                <h1 id="pageTitle">🏢 APEX Property Portfolio Dashboard</h1>
                 <p id="lastUpdate">Loading data...</p>
             </div>
             <div class="header-right">
-                <div class="week-picker">
-                    <label for="weekSelect">Week Ending:</label>
-                    <select id="weekSelect" onchange="onWeekChange()"></select>
-                </div>
-                <div id="statusBadge" class="status-badge">
-                    <span class="dot"></span>
-                    <span>Live</span>
-                </div>
+                <div id="statusBadge" class="status-badge"><span class="dot"></span><span>Live</span></div>
                 <button class="refresh-btn" onclick="refreshData()">↻ Refresh</button>
             </div>
         </div>
 
         <div id="errorContainer"></div>
-
+        <div id="controlsBar"></div>
         <p id="reportingLine" class="reporting-line"></p>
-
-        <div id="scorecard" class="scorecard">
-            <div class="data-placeholder">
-                <div class="spinner"></div>
-                <p>Loading KPI data...</p>
-            </div>
-        </div>
-
-        <div class="properties-section">
-            <h2>Property Performance Details</h2>
-            <div id="propertiesTable"></div>
+        <div id="mainContent">
+            <div class="data-placeholder"><div class="spinner"></div><p>Loading data...</p></div>
         </div>
     </div>
+
+    <datalist id="propertyList"></datalist>
 
     <script>
         // Both tabs published from the same Google Sheet (File > Share > Publish to web > CSV)
@@ -369,41 +198,37 @@
             { key: 'rgiOnTime', name: 'RGI Reviews Completed On Time', targetName: 'RGI Reviews Completed On Time', inverse: false, unit: '%' }
         ];
 
-        let properties = [];       // [{id, name, totalUnits}]
-        let targets = {};          // { 'Occupancy Rate': 97, ... }
+        let properties = [];          // [{id, name, totalUnits}]
+        let targets = {};             // { 'Occupancy Rate': 97, ... }
         let entriesByWeek = new Map(); // week -> [rawRow]
-        let weeksSorted = [];      // descending, most recent first
-        let selectedWeek = null;
+        let weeksSorted = [];          // descending, most recent first
         let lastLoadTime = null;
+
+        // View state
+        let view = { mode: 'portfolio', property: null };
+        let rangeFrom = null, rangeTo = null;
+        let searchQuery = '';
+        let activeChartKpi = 'occupancy';
 
         document.addEventListener('DOMContentLoaded', function() {
             loadData();
             setInterval(loadData, 60000);
+            window.addEventListener('hashchange', handleHashChange);
         });
 
         async function loadData() {
             try {
                 updateStatus('updating');
-                const [setupText, entryText] = await Promise.all([
-                    fetchCsv(SETUP_CSV_URL),
-                    fetchCsv(ENTRY_CSV_URL)
-                ]);
+                const [setupText, entryText] = await Promise.all([fetchCsv(SETUP_CSV_URL), fetchCsv(ENTRY_CSV_URL)]);
 
                 parseSetup(setupText);
                 parseEntries(entryText);
+                populatePropertyDatalist();
 
-                const previousSelection = selectedWeek;
-                populateWeekSelect();
+                if (!rangeFrom || !weeksSorted.includes(rangeFrom)) rangeFrom = weeksSorted[0] || null;
+                if (!rangeTo || !weeksSorted.includes(rangeTo)) rangeTo = weeksSorted[0] || null;
 
-                // Preserve the user's selection across refreshes if it still exists, else default to latest
-                if (previousSelection && weeksSorted.includes(previousSelection)) {
-                    selectedWeek = previousSelection;
-                    document.getElementById('weekSelect').value = selectedWeek;
-                } else {
-                    selectedWeek = weeksSorted[0] || null;
-                }
-
-                renderDashboard();
+                handleHashChange();
                 updateStatus('live');
                 clearError();
                 lastLoadTime = new Date();
@@ -416,9 +241,7 @@
 
         async function fetchCsv(url) {
             const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch data: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`Failed to fetch data: ${response.status}`);
             return response.text();
         }
 
@@ -426,17 +249,11 @@
             const result = [];
             let current = '';
             let insideQuotes = false;
-
             for (let i = 0; i < line.length; i++) {
                 const char = line[i];
-                if (char === '"') {
-                    insideQuotes = !insideQuotes;
-                } else if (char === ',' && !insideQuotes) {
-                    result.push(current);
-                    current = '';
-                } else {
-                    current += char;
-                }
+                if (char === '"') insideQuotes = !insideQuotes;
+                else if (char === ',' && !insideQuotes) { result.push(current); current = ''; }
+                else current += char;
             }
             result.push(current);
             return result;
@@ -449,191 +266,157 @@
             return parseFloat(cleaned);
         }
 
-        // Setup tab: Property List in columns A-D, KPI Targets in columns F-H
         function parseSetup(csv) {
             const lines = csv.trim().split('\n');
             const newProperties = [];
             const newTargets = {};
-
             for (let i = 0; i < lines.length; i++) {
                 const row = parseCSVLine(lines[i]);
-                // Property List rows: Property ID (P##), Property Name, Total Units, Property Manager
                 if (row[0] && /^P\d+/.test(row[0].trim())) {
                     const totalUnits = toNumber(row[2]);
                     if (row[1] && row[1].trim() && !isNaN(totalUnits)) {
-                        newProperties.push({
-                            id: row[0].trim(),
-                            name: row[1].trim(),
-                            totalUnits: totalUnits
-                        });
+                        newProperties.push({ id: row[0].trim(), name: row[1].trim(), totalUnits });
                     }
                 }
-                // KPI Targets rows: KPI name in col F (idx 5), Target in col G (idx 6)
                 if (row[5] && row[5].trim() && KPI_DEFS.some(k => k.targetName === row[5].trim())) {
                     const targetVal = toNumber(row[6]);
-                    if (!isNaN(targetVal)) {
-                        newTargets[row[5].trim()] = targetVal;
-                    }
+                    if (!isNaN(targetVal)) newTargets[row[5].trim()] = targetVal;
                 }
             }
-
             properties = newProperties;
             targets = newTargets;
         }
 
-        // Weekly Entry tab: Week Ending, Property, Units Occupied, Rent Charged, Rent Collected,
-        // Work Orders Due, WOs Closed On Time, Avg Turnaround (days), RGI Reviews Due, RGI Reviews Done
         function parseEntries(csv) {
             const lines = csv.trim().split('\n');
             const newMap = new Map();
-
             for (let i = 1; i < lines.length; i++) {
                 if (!lines[i].trim()) continue;
                 const row = parseCSVLine(lines[i]);
                 const week = row[0] ? row[0].trim() : '';
                 const property = row[1] ? row[1].trim() : '';
                 if (!week || !property) continue;
-
                 const entry = {
-                    week,
-                    property,
-                    unitsOccupied: toNumber(row[2]),
-                    rentCharged: toNumber(row[3]),
-                    rentCollected: toNumber(row[4]),
-                    woDue: toNumber(row[5]),
-                    woClosedOnTime: toNumber(row[6]),
-                    avgTurnaround: toNumber(row[7]),
-                    rgiDue: toNumber(row[8]),
-                    rgiDone: toNumber(row[9])
+                    week, property,
+                    unitsOccupied: toNumber(row[2]), rentCharged: toNumber(row[3]), rentCollected: toNumber(row[4]),
+                    woDue: toNumber(row[5]), woClosedOnTime: toNumber(row[6]), avgTurnaround: toNumber(row[7]),
+                    rgiDue: toNumber(row[8]), rgiDone: toNumber(row[9])
                 };
-
                 if (!newMap.has(week)) newMap.set(week, []);
                 newMap.get(week).push(entry);
             }
-
             entriesByWeek = newMap;
             weeksSorted = Array.from(newMap.keys()).sort().reverse();
         }
 
-        function populateWeekSelect() {
-            const select = document.getElementById('weekSelect');
-            select.innerHTML = weeksSorted.map(w => `<option value="${w}">${w}</option>`).join('');
+        function populatePropertyDatalist() {
+            document.getElementById('propertyList').innerHTML =
+                properties.map(p => `<option value="${p.name}">`).join('');
         }
 
-        function onWeekChange() {
-            selectedWeek = document.getElementById('weekSelect').value;
-            renderDashboard();
+        // ---------- Routing ----------
+        function handleHashChange() {
+            const hash = decodeURIComponent(location.hash.replace(/^#/, ''));
+            if (hash.startsWith('property/')) {
+                view = { mode: 'property', property: hash.slice('property/'.length) };
+            } else {
+                view = { mode: 'portfolio', property: null };
+            }
+            renderApp();
         }
 
-        function refreshData() {
-            loadData();
-        }
+        function navigateToProperty(name) { location.hash = '#property/' + encodeURIComponent(name); }
+        function backToPortfolio() { location.hash = ''; }
 
-        // Compute per-property metrics for a single raw entry row
+        function refreshData() { loadData(); }
+
+        // ---------- Metric computation ----------
+        function findProperty(name) { return properties.find(p => p.name === name); }
+
         function computePropertyMetrics(entry) {
-            const prop = properties.find(p => p.name === entry.property);
+            const prop = findProperty(entry.property);
             const totalUnits = prop ? prop.totalUnits : NaN;
 
-            const occupancy = (!isNaN(totalUnits) && totalUnits > 0 && !isNaN(entry.unitsOccupied))
-                ? (entry.unitsOccupied / totalUnits) * 100 : NaN;
-            const collection = (!isNaN(entry.rentCharged) && entry.rentCharged > 0 && !isNaN(entry.rentCollected))
-                ? (entry.rentCollected / entry.rentCharged) * 100 : NaN;
-            const woOnTime = (!isNaN(entry.woDue) && entry.woDue > 0 && !isNaN(entry.woClosedOnTime))
-                ? (entry.woClosedOnTime / entry.woDue) * 100 : NaN;
+            const occupancy = (!isNaN(totalUnits) && totalUnits > 0 && !isNaN(entry.unitsOccupied)) ? (entry.unitsOccupied / totalUnits) * 100 : NaN;
+            const collection = (!isNaN(entry.rentCharged) && entry.rentCharged > 0 && !isNaN(entry.rentCollected)) ? (entry.rentCollected / entry.rentCharged) * 100 : NaN;
+            const woOnTime = (!isNaN(entry.woDue) && entry.woDue > 0 && !isNaN(entry.woClosedOnTime)) ? (entry.woClosedOnTime / entry.woDue) * 100 : NaN;
             const turnaround = !isNaN(entry.avgTurnaround) ? entry.avgTurnaround : NaN;
-            const rgiOnTime = (!isNaN(entry.rgiDue) && entry.rgiDue > 0 && !isNaN(entry.rgiDone))
-                ? (entry.rgiDone / entry.rgiDue) * 100 : NaN;
+            const rgiOnTime = (!isNaN(entry.rgiDue) && entry.rgiDue > 0 && !isNaN(entry.rgiDone)) ? (entry.rgiDone / entry.rgiDue) * 100 : NaN;
 
             const metrics = { occupancy, collection, woOnTime, turnaround, rgiOnTime };
-
             let kpisMet = 0;
             KPI_DEFS.forEach(def => {
                 const val = metrics[def.key];
                 const target = targets[def.targetName];
                 if (isNaN(val) || target === undefined) return;
-                const meets = def.inverse ? val <= target : val >= target;
-                if (meets) kpisMet++;
+                if (def.inverse ? val <= target : val >= target) kpisMet++;
             });
-
             return { ...metrics, kpisMet };
         }
 
-        // Aggregate portfolio-wide KPI values for a given week (weighted where applicable)
-        function computeWeekAggregate(week) {
-            const rows = entriesByWeek.get(week) || [];
-            let occNum = 0, occDen = 0;
-            let colNum = 0, colDen = 0;
-            let woNum = 0, woDen = 0;
-            let rgiNum = 0, rgiDen = 0;
-            let turnSum = 0, turnCount = 0;
-
-            rows.forEach(entry => {
-                const prop = properties.find(p => p.name === entry.property);
-                const totalUnits = prop ? prop.totalUnits : NaN;
-
-                if (!isNaN(totalUnits) && !isNaN(entry.unitsOccupied)) {
-                    occNum += entry.unitsOccupied;
-                    occDen += totalUnits;
-                }
-                if (!isNaN(entry.rentCharged) && !isNaN(entry.rentCollected)) {
-                    colNum += entry.rentCollected;
-                    colDen += entry.rentCharged;
-                }
-                if (!isNaN(entry.woDue) && !isNaN(entry.woClosedOnTime)) {
-                    woNum += entry.woClosedOnTime;
-                    woDen += entry.woDue;
-                }
-                if (!isNaN(entry.rgiDue) && !isNaN(entry.rgiDone)) {
-                    rgiNum += entry.rgiDone;
-                    rgiDen += entry.rgiDue;
-                }
-                if (!isNaN(entry.avgTurnaround)) {
-                    turnSum += entry.avgTurnaround;
-                    turnCount++;
+        // All raw entries whose week falls within [lo, hi] inclusive, optionally filtered to one property
+        function getEntriesInRange(fromWeek, toWeek, propertyName) {
+            if (!fromWeek || !toWeek) return [];
+            const lo = fromWeek <= toWeek ? fromWeek : toWeek;
+            const hi = fromWeek <= toWeek ? toWeek : fromWeek;
+            const result = [];
+            weeksSorted.forEach(w => {
+                if (w >= lo && w <= hi) {
+                    (entriesByWeek.get(w) || []).forEach(r => {
+                        if (!propertyName || r.property === propertyName) result.push(r);
+                    });
                 }
             });
+            return result;
+        }
 
+        function aggregateEntries(entries) {
+            let occNum = 0, occDen = 0, colNum = 0, colDen = 0, woNum = 0, woDen = 0, rgiNum = 0, rgiDen = 0, turnSum = 0, turnCount = 0;
+            const propSet = new Set();
+            entries.forEach(entry => {
+                propSet.add(entry.property);
+                const prop = findProperty(entry.property);
+                const totalUnits = prop ? prop.totalUnits : NaN;
+                if (!isNaN(totalUnits) && !isNaN(entry.unitsOccupied)) { occNum += entry.unitsOccupied; occDen += totalUnits; }
+                if (!isNaN(entry.rentCharged) && !isNaN(entry.rentCollected)) { colNum += entry.rentCollected; colDen += entry.rentCharged; }
+                if (!isNaN(entry.woDue) && !isNaN(entry.woClosedOnTime)) { woNum += entry.woClosedOnTime; woDen += entry.woDue; }
+                if (!isNaN(entry.rgiDue) && !isNaN(entry.rgiDone)) { rgiNum += entry.rgiDone; rgiDen += entry.rgiDue; }
+                if (!isNaN(entry.avgTurnaround)) { turnSum += entry.avgTurnaround; turnCount++; }
+            });
             return {
                 occupancy: occDen > 0 ? (occNum / occDen) * 100 : NaN,
                 collection: colDen > 0 ? (colNum / colDen) * 100 : NaN,
                 woOnTime: woDen > 0 ? (woNum / woDen) * 100 : NaN,
                 turnaround: turnCount > 0 ? turnSum / turnCount : NaN,
                 rgiOnTime: rgiDen > 0 ? (rgiNum / rgiDen) * 100 : NaN,
-                reportCount: rows.length
+                entryCount: entries.length,
+                propertiesReporting: propSet.size
             };
         }
 
-        // Trailing 4-week average (the selected week plus up to 3 prior weeks that have data)
-        function computeTrailingAverage(week) {
-            const idx = weeksSorted.indexOf(week);
-            if (idx === -1) return {};
-            const windowWeeks = weeksSorted.slice(idx, idx + 4);
-            const sums = { occupancy: [], collection: [], woOnTime: [], turnaround: [], rgiOnTime: [] };
-
-            windowWeeks.forEach(w => {
-                const agg = computeWeekAggregate(w);
-                Object.keys(sums).forEach(key => {
-                    if (!isNaN(agg[key])) sums[key].push(agg[key]);
-                });
-            });
-
-            const avg = {};
-            Object.keys(sums).forEach(key => {
-                avg[key] = sums[key].length > 0 ? sums[key].reduce((a, b) => a + b, 0) / sums[key].length : NaN;
-            });
-            return avg;
+        function getPriorPeriod(fromWeek, toWeek) {
+            const weeksAsc = [...weeksSorted].reverse();
+            const lo = fromWeek <= toWeek ? fromWeek : toWeek;
+            const hi = fromWeek <= toWeek ? toWeek : fromWeek;
+            const loIdx = weeksAsc.indexOf(lo), hiIdx = weeksAsc.indexOf(hi);
+            if (loIdx === -1 || hiIdx === -1) return null;
+            const rangeLen = hiIdx - loIdx + 1;
+            const priorHiIdx = loIdx - 1;
+            const priorLoIdx = priorHiIdx - rangeLen + 1;
+            if (priorHiIdx < 0) return null;
+            return { from: weeksAsc[Math.max(0, priorLoIdx)], to: weeksAsc[priorHiIdx] };
         }
 
-        function countBelowTarget(week, kpiKey, def) {
-            const rows = entriesByWeek.get(week) || [];
+        function countBelowTarget(entries, kpiKey, def) {
+            const byProperty = new Map();
+            entries.forEach(e => byProperty.set(e.property, e));
             let count = 0;
-            rows.forEach(entry => {
-                const metrics = computePropertyMetrics(entry);
-                const val = metrics[kpiKey];
+            byProperty.forEach(entry => {
+                const m = computePropertyMetrics(entry);
+                const val = m[kpiKey];
                 const target = targets[def.targetName];
                 if (isNaN(val) || target === undefined) return;
-                const meets = def.inverse ? val <= target : val >= target;
-                if (!meets) count++;
+                if (!(def.inverse ? val <= target : val >= target)) count++;
             });
             return count;
         }
@@ -646,163 +429,358 @@
             return 'danger';
         }
 
-        function renderDashboard() {
-            renderReportingLine();
-            renderKPIs();
+        // ---------- Top-level render ----------
+        function renderApp() {
+            if (weeksSorted.length === 0) {
+                document.getElementById('controlsBar').innerHTML = '';
+                document.getElementById('reportingLine').textContent = '';
+                document.getElementById('mainContent').innerHTML = '<div class="data-placeholder"><p>No weekly data available yet. Please enter data in your Google Sheet.</p></div>';
+                return;
+            }
+            if (view.mode === 'property' && findProperty(view.property)) {
+                renderPropertyView(view.property);
+            } else {
+                view = { mode: 'portfolio', property: null };
+                renderPortfolioView();
+            }
+        }
+
+        function renderRangeControls(extra) {
+            const weekOptions = weeksSorted.map(w => `<option value="${w}">${w}</option>`).join('');
+            return `
+                <div class="controls-bar">
+                    <div class="control-group">
+                        <label for="rangeFromSelect">From:</label>
+                        <select id="rangeFromSelect" onchange="onRangeChange()">${weekOptions}</select>
+                    </div>
+                    <div class="control-group">
+                        <label for="rangeToSelect">To:</label>
+                        <select id="rangeToSelect" onchange="onRangeChange()">${weekOptions}</select>
+                    </div>
+                    ${extra || ''}
+                </div>
+            `;
+        }
+
+        function onRangeChange() {
+            rangeFrom = document.getElementById('rangeFromSelect').value;
+            rangeTo = document.getElementById('rangeToSelect').value;
+            renderApp();
+        }
+
+        function onSearchInput() {
+            searchQuery = document.getElementById('propertySearch').value.trim().toLowerCase();
             renderPropertiesTable();
         }
 
-        function renderReportingLine() {
-            const line = document.getElementById('reportingLine');
-            if (!selectedWeek) {
-                line.textContent = '';
-                return;
-            }
-            const rows = entriesByWeek.get(selectedWeek) || [];
-            const reportingCount = new Set(rows.map(r => r.property)).size;
-            line.textContent = `Week Ending ${selectedWeek} · ${reportingCount} of ${properties.length} properties reporting`;
+        function onJumpToProperty() {
+            const val = document.getElementById('propertyJump').value.trim();
+            if (val && findProperty(val)) navigateToProperty(val);
         }
 
-        function renderKPIs() {
-            const scorecard = document.getElementById('scorecard');
+        // ---------- Portfolio view ----------
+        function renderPortfolioView() {
+            document.getElementById('pageTitle').textContent = '🏢 APEX Property Portfolio Dashboard';
+            document.getElementById('controlsBar').innerHTML = renderRangeControls(
+                `<div class="control-group" style="margin-left:auto;">
+                    <label for="propertySearch">Search:</label>
+                    <input type="search" id="propertySearch" placeholder="Filter by property name..." oninput="onSearchInput()" value="${searchQuery}">
+                </div>`
+            );
+            document.getElementById('rangeFromSelect').value = rangeFrom;
+            document.getElementById('rangeToSelect').value = rangeTo;
 
-            if (!selectedWeek || weeksSorted.length === 0) {
-                scorecard.innerHTML = '<div class="data-placeholder"><p>No weekly data available yet. Please enter data in your Google Sheet.</p></div>';
-                return;
-            }
+            const entries = getEntriesInRange(rangeFrom, rangeTo);
+            const agg = aggregateEntries(entries);
+            const prior = getPriorPeriod(rangeFrom, rangeTo);
+            const priorAgg = prior ? aggregateEntries(getEntriesInRange(prior.from, prior.to)) : null;
 
-            const agg = computeWeekAggregate(selectedWeek);
-            const trailing = computeTrailingAverage(selectedWeek);
+            const rangeLabel = rangeFrom === rangeTo ? `Week Ending ${rangeFrom}` : `${rangeFrom} → ${rangeTo}`;
+            document.getElementById('reportingLine').textContent =
+                `${rangeLabel} · ${agg.propertiesReporting} of ${properties.length} properties reporting (${agg.entryCount} ${agg.entryCount === 1 ? 'entry' : 'entries'})`;
 
-            scorecard.innerHTML = KPI_DEFS.map(def => {
+            const scorecardHtml = KPI_DEFS.map(def => {
                 const value = agg[def.key];
                 const target = targets[def.targetName];
                 const hasData = !isNaN(value);
-
                 if (!hasData) {
-                    return `
-                        <div class="kpi-card">
-                            <div class="kpi-label">${def.name}</div>
-                            <div class="kpi-value">—</div>
-                            <div class="kpi-target">Target: ${target !== undefined ? target + def.unit : '—'}</div>
-                            <div class="kpi-bar"><div class="kpi-bar-fill" style="width: 0%"></div></div>
-                            <div class="kpi-stats">
-                                <span>This Week: —</span>
-                                <span>4-Wk Avg: —</span>
-                            </div>
-                        </div>
-                    `;
+                    return `<div class="kpi-card"><div class="kpi-label">${def.name}</div><div class="kpi-value">—</div>
+                        <div class="kpi-target">Target: ${target !== undefined ? target + def.unit : '—'}</div>
+                        <div class="kpi-bar"><div class="kpi-bar-fill" style="width:0%"></div></div>
+                        <div class="kpi-stats"><span>This Period: —</span><span>Prior Period: —</span></div></div>`;
                 }
-
                 const status = getStatus(value, target, def.inverse);
-                const percentage = def.inverse
-                    ? Math.min(100, (target / value) * 100)
-                    : Math.min(100, (value / target) * 100);
-                const trailingVal = trailing[def.key];
-                const belowTarget = countBelowTarget(selectedWeek, def.key, def);
-
+                const percentage = def.inverse ? Math.min(100, (target / value) * 100) : Math.min(100, (value / target) * 100);
+                const priorVal = priorAgg ? priorAgg[def.key] : NaN;
+                const belowTarget = countBelowTarget(entries, def.key, def);
                 return `
                     <div class="kpi-card status-${status}">
                         <div class="kpi-label">${def.name}</div>
                         <div class="kpi-value">${value.toFixed(1)}${def.unit}</div>
                         <div class="kpi-target">Target: ${target !== undefined ? target + def.unit : '—'}</div>
-                        <div class="kpi-bar"><div class="kpi-bar-fill" style="width: ${percentage}%"></div></div>
+                        <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${percentage}%"></div></div>
                         <div class="kpi-stats">
-                            <span>This Week: ${value.toFixed(1)}${def.unit}</span>
-                            <span>4-Wk Avg: ${!isNaN(trailingVal) ? trailingVal.toFixed(1) + def.unit : '—'}</span>
+                            <span>This Period: ${value.toFixed(1)}${def.unit}</span>
+                            <span>Prior Period: ${!isNaN(priorVal) ? priorVal.toFixed(1) + def.unit : '—'}</span>
                         </div>
-                        <div class="kpi-stats" style="margin-top:6px;">
-                            <span>${belowTarget} ${belowTarget === 1 ? 'property' : 'properties'} below target</span>
-                        </div>
-                    </div>
-                `;
+                        <div class="kpi-stats" style="margin-top:6px;"><span>${belowTarget} ${belowTarget === 1 ? 'property' : 'properties'} below target</span></div>
+                    </div>`;
             }).join('');
+
+            document.getElementById('mainContent').innerHTML = `
+                <div class="scorecard">${scorecardHtml}</div>
+                <div class="properties-section">
+                    <h2>Property Performance Details <span style="font-weight:400;font-size:13px;color:#9ca3af;">— click a row to open its dashboard</span></h2>
+                    <div id="propertiesTable"></div>
+                </div>
+            `;
+            renderPropertiesTable();
         }
 
         function renderPropertiesTable() {
             const container = document.getElementById('propertiesTable');
-
             if (properties.length === 0) {
                 container.innerHTML = '<p class="data-placeholder">No property data available yet.</p>';
                 return;
             }
+            const entries = getEntriesInRange(rangeFrom, rangeTo);
+            const latestEntryByProperty = new Map();
+            entries.forEach(e => latestEntryByProperty.set(e.property, e)); // last write wins = most recent week in range
 
-            const rows = selectedWeek ? (entriesByWeek.get(selectedWeek) || []) : [];
-            const entryByProperty = new Map(rows.map(r => [r.property, r]));
+            const filtered = properties.filter(p => !searchQuery || p.name.toLowerCase().includes(searchQuery));
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<p class="data-placeholder">No properties match your search.</p>';
+                return;
+            }
 
             const html = `
                 <table class="properties-table">
-                    <thead>
-                        <tr>
-                            <th>Property</th>
-                            <th>Occupancy %</th>
-                            <th>Collection %</th>
-                            <th>WO On-Time %</th>
-                            <th>Turnaround (days)</th>
-                            <th>RGI On-Time %</th>
-                            <th>KPIs Met</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
+                    <thead><tr>
+                        <th>Property</th><th>Occupancy %</th><th>Collection %</th><th>WO On-Time %</th>
+                        <th>Turnaround (days)</th><th>RGI On-Time %</th><th>KPIs Met</th><th>Status</th>
+                    </tr></thead>
                     <tbody>
-                        ${properties.map(prop => {
-                            const entry = entryByProperty.get(prop.name);
-                            if (!entry) {
-                                return `
-                                    <tr>
-                                        <td><span class="property-name">${prop.name}</span></td>
-                                        <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
-                                        <td><strong>0/5</strong></td>
-                                        <td><span class="status-badge danger">No Entry</span></td>
-                                    </tr>
-                                `;
-                            }
-                            const m = computePropertyMetrics(entry);
-                            const kpisMetStatus = m.kpisMet >= 4 ? 'good' : m.kpisMet >= 3 ? 'warning' : 'danger';
-                            const statusText = m.kpisMet >= 4 ? 'On Track' : m.kpisMet >= 3 ? 'At Risk' : 'Below Target';
-                            return `
-                                <tr>
+                        ${filtered.map(prop => {
+                            const propEntries = entries.filter(e => e.property === prop.name);
+                            if (propEntries.length === 0) {
+                                return `<tr onclick="navigateToProperty('${prop.name.replace(/'/g, "\\'")}')">
                                     <td><span class="property-name">${prop.name}</span></td>
-                                    <td>${!isNaN(m.occupancy) ? m.occupancy.toFixed(1) + '%' : '—'}</td>
-                                    <td>${!isNaN(m.collection) ? m.collection.toFixed(1) + '%' : '—'}</td>
-                                    <td>${!isNaN(m.woOnTime) ? m.woOnTime.toFixed(1) + '%' : '—'}</td>
-                                    <td>${!isNaN(m.turnaround) ? m.turnaround : '—'}</td>
-                                    <td>${!isNaN(m.rgiOnTime) ? m.rgiOnTime.toFixed(1) + '%' : '—'}</td>
-                                    <td><strong>${m.kpisMet}/5</strong></td>
-                                    <td><span class="status-badge ${kpisMetStatus}">${statusText}</span></td>
-                                </tr>
-                            `;
+                                    <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+                                    <td><strong>0/5</strong></td><td><span class="status-pill danger">No Entry</span></td>
+                                </tr>`;
+                            }
+                            const agg = aggregateEntries(propEntries);
+                            let kpisMet = 0;
+                            KPI_DEFS.forEach(def => {
+                                const val = agg[def.key];
+                                const target = targets[def.targetName];
+                                if (isNaN(val) || target === undefined) return;
+                                if (def.inverse ? val <= target : val >= target) kpisMet++;
+                            });
+                            const kpisMetStatus = kpisMet >= 4 ? 'good' : kpisMet >= 3 ? 'warning' : 'danger';
+                            const statusText = kpisMet >= 4 ? 'On Track' : kpisMet >= 3 ? 'At Risk' : 'Below Target';
+                            return `
+                                <tr onclick="navigateToProperty('${prop.name.replace(/'/g, "\\'")}')">
+                                    <td><span class="property-name">${prop.name}</span></td>
+                                    <td>${!isNaN(agg.occupancy) ? agg.occupancy.toFixed(1) + '%' : '—'}</td>
+                                    <td>${!isNaN(agg.collection) ? agg.collection.toFixed(1) + '%' : '—'}</td>
+                                    <td>${!isNaN(agg.woOnTime) ? agg.woOnTime.toFixed(1) + '%' : '—'}</td>
+                                    <td>${!isNaN(agg.turnaround) ? agg.turnaround.toFixed(1) : '—'}</td>
+                                    <td>${!isNaN(agg.rgiOnTime) ? agg.rgiOnTime.toFixed(1) + '%' : '—'}</td>
+                                    <td><strong>${kpisMet}/5</strong></td>
+                                    <td><span class="status-pill ${kpisMetStatus}">${statusText}</span></td>
+                                </tr>`;
                         }).join('')}
                     </tbody>
                 </table>
+                <p style="margin-top:12px;font-size:12px;color:#9ca3af;">Showing ${filtered.length} of ${properties.length} properties</p>
             `;
-
             container.innerHTML = html;
         }
 
+        // ---------- Property detail view ----------
+        function renderPropertyView(propertyName) {
+            const prop = findProperty(propertyName);
+            document.getElementById('pageTitle').textContent = `🏢 ${propertyName} — Property Dashboard`;
+
+            document.getElementById('controlsBar').innerHTML = renderRangeControls(`
+                <div class="control-group" style="margin-left:auto;">
+                    <label for="propertyJump">Switch Property:</label>
+                    <input type="search" id="propertyJump" list="propertyList" placeholder="Type a property name..." onchange="onJumpToProperty()">
+                </div>
+                <button class="back-btn" onclick="backToPortfolio()">← Back to Portfolio</button>
+            `);
+            document.getElementById('rangeFromSelect').value = rangeFrom;
+            document.getElementById('rangeToSelect').value = rangeTo;
+
+            const entries = getEntriesInRange(rangeFrom, rangeTo, propertyName);
+            const agg = aggregateEntries(entries);
+            const prior = getPriorPeriod(rangeFrom, rangeTo);
+            const priorAgg = prior ? aggregateEntries(getEntriesInRange(prior.from, prior.to, propertyName)) : null;
+
+            const rangeLabel = rangeFrom === rangeTo ? `Week Ending ${rangeFrom}` : `${rangeFrom} → ${rangeTo}`;
+            document.getElementById('reportingLine').textContent =
+                `${propertyName} (${prop.totalUnits} units) · ${rangeLabel} · ${agg.entryCount} weekly ${agg.entryCount === 1 ? 'entry' : 'entries'} in range`;
+
+            const scorecardHtml = KPI_DEFS.map(def => {
+                const value = agg[def.key];
+                const target = targets[def.targetName];
+                const hasData = !isNaN(value);
+                if (!hasData) {
+                    return `<div class="kpi-card clickable" onclick="setActiveChart('${def.key}')"><div class="kpi-label">${def.name}</div><div class="kpi-value">—</div>
+                        <div class="kpi-target">Target: ${target !== undefined ? target + def.unit : '—'}</div>
+                        <div class="kpi-bar"><div class="kpi-bar-fill" style="width:0%"></div></div>
+                        <div class="kpi-stats"><span>This Period: —</span><span>Prior Period: —</span></div></div>`;
+                }
+                const status = getStatus(value, target, def.inverse);
+                const percentage = def.inverse ? Math.min(100, (target / value) * 100) : Math.min(100, (value / target) * 100);
+                const priorVal = priorAgg ? priorAgg[def.key] : NaN;
+                return `
+                    <div class="kpi-card status-${status} clickable" onclick="setActiveChart('${def.key}')">
+                        <div class="kpi-label">${def.name}</div>
+                        <div class="kpi-value">${value.toFixed(1)}${def.unit}</div>
+                        <div class="kpi-target">Target: ${target !== undefined ? target + def.unit : '—'}</div>
+                        <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${percentage}%"></div></div>
+                        <div class="kpi-stats">
+                            <span>This Period: ${value.toFixed(1)}${def.unit}</span>
+                            <span>Prior Period: ${!isNaN(priorVal) ? priorVal.toFixed(1) + def.unit : '—'}</span>
+                        </div>
+                    </div>`;
+            }).join('');
+
+            // Full weekly history for this property (all weeks, not just the selected range)
+            const weeksAsc = [...weeksSorted].reverse();
+            const historyRows = weeksAsc.map(w => {
+                const rows = entriesByWeek.get(w) || [];
+                const entry = rows.find(r => r.property === propertyName);
+                if (!entry) return { week: w, entry: null, m: null };
+                return { week: w, entry, m: computePropertyMetrics(entry) };
+            }).filter(r => r.entry);
+
+            document.getElementById('mainContent').innerHTML = `
+                <div class="scorecard">${scorecardHtml}</div>
+                <div class="chart-section">
+                    <h2>Trend</h2>
+                    <div class="kpi-tabs">
+                        ${KPI_DEFS.map(def => `<button class="kpi-tab ${activeChartKpi === def.key ? 'active' : ''}" onclick="setActiveChart('${def.key}')">${def.name}</button>`).join('')}
+                    </div>
+                    <div id="chartContainer"></div>
+                </div>
+                <div class="history-section">
+                    <h2>Weekly History</h2>
+                    <div id="historyTable"></div>
+                </div>
+            `;
+            renderChart(propertyName, activeChartKpi);
+            renderHistoryTable(historyRows);
+        }
+
+        function setActiveChart(kpiKey) {
+            activeChartKpi = kpiKey;
+            renderApp();
+        }
+
+        function renderHistoryTable(historyRows) {
+            const container = document.getElementById('historyTable');
+            if (historyRows.length === 0) {
+                container.innerHTML = '<p class="data-placeholder">No entries recorded for this property yet.</p>';
+                return;
+            }
+            container.innerHTML = `
+                <table class="history-table">
+                    <thead><tr>
+                        <th>Week Ending</th><th>Occupancy %</th><th>Collection %</th><th>WO On-Time %</th>
+                        <th>Turnaround (days)</th><th>RGI On-Time %</th><th>KPIs Met</th>
+                    </tr></thead>
+                    <tbody>
+                        ${historyRows.slice().reverse().map(r => `
+                            <tr>
+                                <td><strong>${r.week}</strong></td>
+                                <td>${!isNaN(r.m.occupancy) ? r.m.occupancy.toFixed(1) + '%' : '—'}</td>
+                                <td>${!isNaN(r.m.collection) ? r.m.collection.toFixed(1) + '%' : '—'}</td>
+                                <td>${!isNaN(r.m.woOnTime) ? r.m.woOnTime.toFixed(1) + '%' : '—'}</td>
+                                <td>${!isNaN(r.m.turnaround) ? r.m.turnaround.toFixed(1) : '—'}</td>
+                                <td>${!isNaN(r.m.rgiOnTime) ? r.m.rgiOnTime.toFixed(1) + '%' : '—'}</td>
+                                <td><strong>${r.m.kpisMet}/5</strong></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        // ---------- SVG trend chart ----------
+        function renderChart(propertyName, kpiKey) {
+            const container = document.getElementById('chartContainer');
+            const def = KPI_DEFS.find(d => d.key === kpiKey);
+            const weeksAsc = [...weeksSorted].reverse();
+
+            const points = weeksAsc.map(w => {
+                const rows = entriesByWeek.get(w) || [];
+                const entry = rows.find(r => r.property === propertyName);
+                if (!entry) return null;
+                const m = computePropertyMetrics(entry);
+                return { week: w, value: m[kpiKey] };
+            }).filter(p => p && !isNaN(p.value));
+
+            if (points.length === 0) {
+                container.innerHTML = '<p class="data-placeholder">No data yet for this metric.</p>';
+                return;
+            }
+
+            const target = targets[def.targetName];
+            const values = points.map(p => p.value);
+            const allVals = target !== undefined ? [...values, target] : values;
+            let minV = Math.min(...allVals), maxV = Math.max(...allVals);
+            const range = (maxV - minV) || Math.max(1, maxV * 0.1);
+            minV -= range * 0.15;
+            maxV += range * 0.15;
+            if (minV === maxV) { minV -= 1; maxV += 1; }
+
+            const width = 900, height = 260;
+            const padL = 55, padR = 20, padT = 20, padB = 45;
+            const plotW = width - padL - padR, plotH = height - padT - padB;
+
+            const x = i => points.length === 1 ? padL + plotW / 2 : padL + (i / (points.length - 1)) * plotW;
+            const y = v => padT + plotH - ((v - minV) / (maxV - minV)) * plotH;
+
+            const linePoints = points.map((p, i) => `${x(i)},${y(p.value)}`).join(' ');
+            const circles = points.map((p, i) => `<circle class="chart-point" cx="${x(i)}" cy="${y(p.value)}" r="4"><title>${p.week}: ${p.value.toFixed(1)}${def.unit}</title></circle>`).join('');
+            const labels = points.map((p, i) => `<text class="chart-label" x="${x(i)}" y="${height - padB + 18}" text-anchor="middle">${p.week.slice(5)}</text>`).join('');
+
+            const targetLine = target !== undefined
+                ? `<line class="chart-target-line" x1="${padL}" y1="${y(target)}" x2="${width - padR}" y2="${y(target)}" />
+                   <text class="chart-label" x="${width - padR}" y="${y(target) - 6}" text-anchor="end" fill="#ef4444">Target ${target}${def.unit}</text>`
+                : '';
+
+            const yMaxLabel = `<text class="chart-label" x="${padL - 8}" y="${padT + 4}" text-anchor="end">${maxV.toFixed(0)}${def.unit}</text>`;
+            const yMinLabel = `<text class="chart-label" x="${padL - 8}" y="${height - padB}" text-anchor="end">${minV.toFixed(0)}${def.unit}</text>`;
+
+            container.innerHTML = `
+                <svg class="chart-svg" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+                    <line class="chart-axis" x1="${padL}" y1="${padT}" x2="${padL}" y2="${height - padB}" />
+                    <line class="chart-axis" x1="${padL}" y1="${height - padB}" x2="${width - padR}" y2="${height - padB}" />
+                    ${targetLine}
+                    <polyline class="chart-line" points="${linePoints}" />
+                    ${circles}
+                    ${labels}
+                    ${yMaxLabel}
+                    ${yMinLabel}
+                </svg>
+            `;
+        }
+
+        // ---------- Status / errors ----------
         function updateStatus(status) {
             const badge = document.getElementById('statusBadge');
-            if (status === 'updating') {
-                badge.classList.add('updating');
-                badge.innerHTML = '<span class="dot"></span><span>Updating...</span>';
-            } else if (status === 'live') {
-                badge.classList.remove('updating');
-                badge.innerHTML = '<span class="dot"></span><span>Live</span>';
-            } else if (status === 'error') {
-                badge.classList.add('updating');
-                badge.innerHTML = '<span class="dot"></span><span>Error</span>';
-            }
+            if (status === 'updating') { badge.classList.add('updating'); badge.innerHTML = '<span class="dot"></span><span>Updating...</span>'; }
+            else if (status === 'live') { badge.classList.remove('updating'); badge.innerHTML = '<span class="dot"></span><span>Live</span>'; }
+            else if (status === 'error') { badge.classList.add('updating'); badge.innerHTML = '<span class="dot"></span><span>Error</span>'; }
         }
+        function showError(message) { document.getElementById('errorContainer').innerHTML = `<div class="error">${message}</div>`; }
+        function clearError() { document.getElementById('errorContainer').innerHTML = ''; }
 
-        function showError(message) {
-            document.getElementById('errorContainer').innerHTML = `<div class="error">${message}</div>`;
-        }
-
-        function clearError() {
-            document.getElementById('errorContainer').innerHTML = '';
-        }
-
-        // Update "last updated" ticker
         setInterval(() => {
             if (lastLoadTime) {
                 const diff = Math.floor((new Date() - lastLoadTime) / 1000);
